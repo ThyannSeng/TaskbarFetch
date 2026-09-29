@@ -6,34 +6,39 @@ The project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-### Fixed
-
-- Prevent an older asynchronous click evaluation from updating or clearing a newer pending taskbar click.
-- Avoid rejecting a taskbar click only because its coordinates fall inside a notification-area child-window rectangle. Explorer can report broad or overlapping child bounds; recognized shell controls are still ignored by their accessible names.
-- Recheck the same-foreground move at its short settle point instead of leaving it pending until the grouped-thumbnail timeout.
-- Queue another evaluation when a foreground event overlaps an active evaluation, so the event is not lost until the pending-click timeout.
-- Keep a grouped-app click pending while Windows' thumbnail picker is visible, and count File Explorer windows across separate `explorer.exe` processes.
-
 ### Added
 
-- A saved tray-menu option to move an already-active window to the monitor whose taskbar button was clicked. It is enabled by default.
-- A per-user Start menu shortcut so installed users can find and open TaskbarFetch without browsing to its install folder.
-- Privacy-safe per-click decision logs for hit-test results, grouped-window waits, selected-window resolution, and timeout cases; window titles and taskbar button names are not recorded.
+- A saved tray-menu option, enabled by default, to move an already-active window to the monitor whose taskbar button was clicked. The choice persists across restarts.
+- A per-user Windows setup wizard that installs TaskbarFetch under `%LOCALAPPDATA%\Programs\TaskbarFetch`, adds a Start menu shortcut, and registers the app in Windows' installed-app list.
+- Setup choices to start TaskbarFetch with Windows and launch it after installation.
+- A project-folder shortcut for source-checkout setup builds, pointing to the installed executable. Running a downloaded setup does not add shortcuts beside the downloaded installer.
+- Privacy-conscious per-click diagnostics for taskbar hit-testing, grouped-window selection, retries, and timeouts. Window titles and taskbar button names are not recorded.
+- Separate versioned portable and setup executables, plus a portable ZIP for release downloads.
+
+### Fixed
+
+- Prevent an older asynchronous click evaluation from replacing or clearing a newer pending taskbar click.
+- Do not reject a taskbar click solely because Explorer reports an overly broad or overlapping notification-area child-window rectangle. Recognized shell controls continue to be ignored by accessible name.
+- Re-evaluate a same-foreground click at the short settle interval, so an already-active window does not wait for the grouped-thumbnail timeout before it can move.
+- Queue another evaluation when a foreground event arrives during an active evaluation, instead of losing that event until the pending-click timeout.
+- Keep grouped-app clicks pending while Windows' thumbnail picker is open, then resolve the selected window after the user chooses a thumbnail.
+- Find File Explorer windows across separate `explorer.exe` processes when resolving a grouped taskbar selection.
+- Preserve normal Windows minimize behavior when the user clicks an application's taskbar button on the monitor where its window already resides.
 
 ### Changed
 
-- Replace script-based setup and removal with a branded Windows setup wizard and native Windows uninstaller.
-- Install per-user under `%LOCALAPPDATA%\Programs\TaskbarFetch`; add a Start menu shortcut and a standard Windows installed-app entry.
-- Let users opt into startup during setup, while preserving existing TaskbarFetch startup state on updates and removing it only when it still points to the managed installation.
-- Preserve saved preferences and diagnostic logs when uninstalling; refuse installation or removal while TaskbarFetch is running.
-- Build a portable ZIP separately from the installable setup program.
-- Name portable and setup executables with the configured version; add separate portable-build, portable-launch, and setup-build commands.
+- Replace the script-based install and removal flow with a branded setup wizard and Windows uninstaller. Installation and removal require TaskbarFetch to be closed; setup does not force-close the app.
+- Preserve the existing installation directory and startup preference during updates. The uninstaller removes the managed program files and shortcuts, and removes the startup entry only when it still points to the managed installation.
+- Preserve user preferences and diagnostic logs after uninstalling.
+- Give the portable build, portable launcher, and setup builder explicit `TaskbarFetch-...` command names.
+- Keep the portable app and installer as distinct downloads, with versioned filenames generated from the central project version.
 
-### Build and verification
+### Developer and release engineering
 
-- Centralize product and assembly versions for SDK project builds, Visual Studio builds, installer metadata, and release packaging.
-- Build portable and setup executables through the versioned SDK project and verify their embedded product versions before packaging.
-- Add a Visual Studio solution, locked geometry tests, and Windows CI coverage for setup and uninstall behavior.
+- Split the former single-file runtime into focused components for tray UI, taskbar event coordination, accessibility hit-testing, window management, geometry, preferences, logging, and Win32 declarations.
+- Centralize product, assembly, installer, and release versions. Build scripts verify the executable metadata against the configured version.
+- Add a Visual Studio solution, locked geometry and pending-click tests, and Windows CI coverage for building, packaging, and installer lifecycle behavior.
+- Strengthen release checks so a published tag must match the project version, dated changelog entry, citation metadata, and README release status. Release packages include SHA-256 checksums and bug-report guidance.
 
 ## [1.0.0-beta.1] - 2026-09-29
 
