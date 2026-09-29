@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <RootNamespace>TaskbarFetch</RootNamespace>
+    <AssemblyName>TaskbarFetch</AssemblyName>
+    <ApplicationIcon>assets\TaskbarFetch.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <Platforms>AnyCPU</Platforms>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="Accessibility" />
+  </ItemGroup>
+</Project>

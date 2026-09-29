@@ -1,0 +1,49 @@
+name: Bug report
+description: Report incorrect window movement or taskbar behavior
+title: "[Bug] "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for helping improve TaskbarFetch. Please avoid including private window titles or sensitive log content.
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version
+      description: "Example: Windows 11 24H2, build 26100.x"
+    validations:
+      required: true
+  - type: input
+    id: monitors
+    attributes:
+      label: Monitor layout
+      description: Number of monitors, resolutions, positions, and scaling percentages
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Put Chrome on Monitor 1
+        2. Click Chrome on Monitor 2's taskbar
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional notes
+      description: Mention taskbar customization tools, elevated apps, or relevant non-sensitive log lines.

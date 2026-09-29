@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+title: TaskbarFetch
+message: "If TaskbarFetch is useful in your work, please cite the software using this metadata."
+type: software
+authors:
+  - family-names: Seng
+    given-names: Thyann
+version: 1.0.0
+date-released: 2026-09-29
+license: MIT

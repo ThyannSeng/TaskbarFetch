@@ -1,0 +1,36 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Build TaskbarFetch
+        shell: cmd
+        run: Build.cmd
+
+      - name: Calculate SHA-256
+        shell: powershell
+        run: |
+          $hash = (Get-FileHash .\dist\TaskbarFetch.exe -Algorithm SHA256).Hash.ToLower()
+          "$hash  TaskbarFetch.exe" | Set-Content .\dist\TaskbarFetch.exe.sha256 -Encoding ascii
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TaskbarFetch-windows
+          path: |
+            dist/TaskbarFetch.exe
+            dist/TaskbarFetch.exe.sha256
