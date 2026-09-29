@@ -6,6 +6,8 @@ The project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.0.0-beta.2] - 2026-09-30
+
 ### Added
 
 - A saved tray-menu option, enabled by default, to move an already-active window to the monitor whose taskbar button was clicked. The choice persists across restarts.
