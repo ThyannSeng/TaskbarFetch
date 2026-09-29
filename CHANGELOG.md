@@ -35,13 +35,6 @@ The project follows [Semantic Versioning](https://semver.org/).
 - Give the portable build, portable launcher, and setup builder explicit `TaskbarFetch-...` command names.
 - Keep the portable app and installer as distinct downloads, with versioned filenames generated from the central project version.
 
-### Developer and release engineering
-
-- Split the former single-file runtime into focused components for tray UI, taskbar event coordination, accessibility hit-testing, window management, geometry, preferences, logging, and Win32 declarations.
-- Centralize product, assembly, installer, and release versions. Build scripts verify the executable metadata against the configured version.
-- Add a Visual Studio solution, locked geometry and pending-click tests, and Windows CI coverage for building, packaging, and installer lifecycle behavior.
-- Strengthen release checks so a published tag must match the project version, dated changelog entry, citation metadata, and README release status. Release packages include SHA-256 checksums and bug-report guidance.
-
 ## [1.0.0-beta.1] - 2026-09-29
 
 ### Added
