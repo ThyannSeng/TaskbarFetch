@@ -18,6 +18,13 @@ Test each scenario with TaskbarFetch active:
 10. Pause TaskbarFetch and confirm it stops moving windows; resume and confirm operation returns.
 11. Toggle Start with Windows and confirm the per-user Run entry changes.
 12. Exit TaskbarFetch and confirm hooks are removed and normal Windows behavior returns.
+13. Toggle **Move already-active window to clicked monitor**, verify an already-active single-window app moves promptly from another monitor when enabled, and verify it stays in place when disabled. Confirm the selected state persists after restarting TaskbarFetch.
+14. Open several File Explorer windows, click their grouped taskbar button on another monitor, choose different thumbnails, and verify only the selected Explorer window moves each time.
+15. Repeat the grouped File Explorer selection with the thumbnail popup open for a few seconds before choosing. Confirm the chosen window moves promptly after selection, and same-monitor clicks keep normal minimize behavior.
+16. Run `TaskbarFetch-Setup-v<version>.exe` and verify the setup wizard identifies TaskbarFetch and Thyann Seng, installs under `%LOCALAPPDATA%\Programs\TaskbarFetch`, creates a Start menu shortcut, and registers TaskbarFetch under Windows installed apps without requesting administrator access. Test both settings for the optional startup task, and confirm the final-page launch checkbox starts the app only when selected.
+17. Install a source-checkout build and confirm the project-folder `TaskbarFetch.lnk` points to the installed executable. Install a release setup from a different directory and confirm no shortcut is added beside the downloaded setup file.
+18. While TaskbarFetch is running, start setup and the uninstaller separately. Confirm both require the app to be exited and never force-close it. After exiting the app, uninstall from Windows Settings; confirm the installed executable and managed shortcuts are removed, the startup entry is removed only when it still points to the installed executable, and diagnostic logs and saved preferences remain.
+19. Repeat setup over an existing installation with startup enabled and disabled. Confirm updates preserve the current startup preference and keep the existing install directory. Verify the portable executable continues to work after uninstalling the installed copy.
 
 ## Regression checks
 

@@ -17,6 +17,9 @@ dist/*
 *.log
 TaskbarFetch.log
 
+# Local launch shortcut
+TaskbarFetch.lnk
+
 # OS files
 Thumbs.db
 Desktop.ini

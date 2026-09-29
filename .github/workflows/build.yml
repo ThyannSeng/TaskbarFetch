@@ -1,4 +1,4 @@
-name: Build
+name: TaskbarFetch Build
 
 on:
   push:
@@ -19,18 +19,35 @@ jobs:
 
       - name: Build TaskbarFetch
         shell: cmd
-        run: Build.cmd
+        run: TaskbarFetch-Build.cmd
+
+      - name: Install Inno Setup compiler
+        shell: pwsh
+        run: .\scripts\Install-InnoSetupForBuild.ps1
+
+      - name: Build TaskbarFetch setup program
+        shell: pwsh
+        run: .\TaskbarFetch-Setup.ps1 -CompilerPath "$env:TASKBARFETCH_ISCC"
 
       - name: Calculate SHA-256
         shell: powershell
         run: |
           $hash = (Get-FileHash .\dist\TaskbarFetch.exe -Algorithm SHA256).Hash.ToLower()
-          "$hash  TaskbarFetch.exe" | Set-Content .\dist\TaskbarFetch.exe.sha256 -Encoding ascii
+          $setup = Get-ChildItem .\dist\TaskbarFetch-Setup-*.exe | Select-Object -First 1
+          if (-not $setup) {
+            throw "The TaskbarFetch setup program was not built."
+          }
+          $setupHash = (Get-FileHash $setup.FullName -Algorithm SHA256).Hash.ToLower()
+          @(
+            "$hash  TaskbarFetch.exe",
+            "$setupHash  $($setup.Name)"
+          ) | Set-Content .\dist\SHA256SUMS.txt -Encoding ascii
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: TaskbarFetch-windows
+          name: TaskbarFetch-windows-setup
           path: |
             dist/TaskbarFetch.exe
-            dist/TaskbarFetch.exe.sha256
+            dist/TaskbarFetch-Setup-*.exe
+            dist/SHA256SUMS.txt

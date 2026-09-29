@@ -1,4 +1,5 @@
 @echo off
+title TaskbarFetch Portable Launcher
 cd /d "%~dp0"
 
 if exist "%~dp0TaskbarFetch.exe" (
@@ -6,13 +7,13 @@ if exist "%~dp0TaskbarFetch.exe" (
   exit /b 0
 )
 
-if not exist "%~dp0Build.cmd" (
-  echo ERROR: TaskbarFetch.exe and Build.cmd were not found.
+if not exist "%~dp0TaskbarFetch-Build.cmd" (
+  echo ERROR: TaskbarFetch.exe and TaskbarFetch-Build.cmd were not found.
   pause
   exit /b 1
 )
 
-call "%~dp0Build.cmd"
+call "%~dp0TaskbarFetch-Build.cmd"
 if errorlevel 1 (
   echo.
   echo Build failed.

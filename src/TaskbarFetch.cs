@@ -25,7 +25,7 @@ using Accessibility;
 [assembly: System.Reflection.AssemblyDescription("Move an existing app window to the monitor whose taskbar button was clicked.")]
 [assembly: System.Reflection.AssemblyVersion("1.0.0.0")]
 [assembly: System.Reflection.AssemblyFileVersion("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersion("1.0.0-beta.1")]
+[assembly: System.Reflection.AssemblyInformationalVersion("1.0.0-beta.2")]
 
 namespace TaskbarFetch
 {
@@ -101,12 +101,14 @@ namespace TaskbarFetch
         private readonly Icon _icon;
         private readonly ToolStripMenuItem _pauseItem;
         private readonly ToolStripMenuItem _startupItem;
+        private readonly ToolStripMenuItem _moveAlreadyActiveItem;
         private readonly TaskbarFetchEngine _engine;
         private bool _disposed;
 
         public TrayApplicationContext()
         {
             _engine = new TaskbarFetchEngine();
+            _engine.MoveAlreadyActiveWindowOnCrossMonitorClick = UserSettingsManager.GetMoveAlreadyActiveWindowOnCrossMonitorClick();
 
             _icon = TryLoadApplicationIcon();
 
@@ -121,6 +123,13 @@ namespace TaskbarFetch
             _pauseItem = new ToolStripMenuItem("Pause");
             _pauseItem.Click += delegate { TogglePause(menu); };
             menu.Items.Add(_pauseItem);
+
+            _moveAlreadyActiveItem = new ToolStripMenuItem("Move already-active window to clicked monitor");
+            _moveAlreadyActiveItem.Checked = _engine.MoveAlreadyActiveWindowOnCrossMonitorClick;
+            _moveAlreadyActiveItem.CheckOnClick = false;
+            _moveAlreadyActiveItem.ToolTipText = "When enabled, clicking this window's taskbar button on another monitor moves it there even if it stays active.";
+            _moveAlreadyActiveItem.Click += delegate { ToggleMoveAlreadyActiveWindow(); };
+            menu.Items.Add(_moveAlreadyActiveItem);
 
             _startupItem = new ToolStripMenuItem("Start with Windows");
             _startupItem.Checked = StartupManager.IsEnabledForCurrentExecutable();
@@ -256,6 +265,29 @@ namespace TaskbarFetch
             }
         }
 
+        private void ToggleMoveAlreadyActiveWindow()
+        {
+            try
+            {
+                bool enable = !_engine.MoveAlreadyActiveWindowOnCrossMonitorClick;
+                UserSettingsManager.SetMoveAlreadyActiveWindowOnCrossMonitorClick(enable);
+                _engine.MoveAlreadyActiveWindowOnCrossMonitorClick = enable;
+                _moveAlreadyActiveItem.Checked = enable;
+                Logger.Log(enable
+                    ? "Already-active cross-monitor move enabled."
+                    : "Already-active cross-monitor move disabled.");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogException("Failed to change already-active window setting", ex);
+                MessageBox.Show(
+                    "Could not change the already-active window setting.\r\n\r\n" + ex.Message,
+                    "TaskbarFetch",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
+        }
+
         private static void OpenLogFolder()
         {
             try
@@ -302,6 +334,9 @@ namespace TaskbarFetch
     {
         private const int InitialEvaluationDelayMs = 180;
         private const int ForegroundEvaluationDelayMs = 70;
+        private const int SameForegroundMoveDelayMs = 260;
+        private const int GroupedWindowGraceMs = 350;
+        private const int PendingEvaluationIntervalMs = 100;
         private const int PendingTimeoutMs = 3500;
 
         private readonly object _sync = new object();
@@ -319,9 +354,17 @@ namespace TaskbarFetch
         private HitTestRequest _latestHitTestRequest;
         private int _nextPendingId;
         private int _evaluationInProgress;
+        private int _evaluationRequested;
         private volatile bool _accessibilityWorkerStop;
         private volatile bool _enabled;
+        private volatile bool _moveAlreadyActiveWindowOnCrossMonitorClick;
         private bool _disposed;
+
+        public bool MoveAlreadyActiveWindowOnCrossMonitorClick
+        {
+            get { return _moveAlreadyActiveWindowOnCrossMonitorClick; }
+            set { _moveAlreadyActiveWindowOnCrossMonitorClick = value; }
+        }
 
         public TaskbarFetchEngine()
         {
@@ -478,10 +521,13 @@ namespace TaskbarFetch
                 _latestHitTestRequest = new HitTestRequest
                 {
                     PendingId = pending.Id,
-                    Taskbar = taskbar,
                     Point = point
                 };
             }
+            Logger.Log(
+                "Taskbar click started; pendingId=" + pending.Id +
+                ", targetMonitor=" + targetMonitor.ToInt64() +
+                ", priorWindow=" + beforeWindow.ToInt64() + ".");
             _accessibilitySignal.Set();
 
         }
@@ -507,7 +553,7 @@ namespace TaskbarFetch
                 if (request == null)
                     continue;
 
-                TaskbarHitKind kind = AccessibilityHitTester.ClassifyTaskbarPoint(request.Taskbar, request.Point);
+                TaskbarHitKind kind = AccessibilityHitTester.ClassifyTaskbarPoint(request.Point);
                 bool clear = false;
                 bool reevaluate = false;
 
@@ -528,10 +574,12 @@ namespace TaskbarFetch
                     }
                 }
 
+                Logger.Log("Taskbar point classified; pendingId=" + request.PendingId + ", hit=" + kind + ".");
+
                 if (clear)
                 {
                     try { _evaluationTimer.Change(Timeout.Infinite, Timeout.Infinite); } catch { }
-                    Logger.Log("Taskbar click classified as shell control; ignored.");
+                    Logger.Log("Taskbar shell control recognized by its accessible name; click ignored.");
                 }
                 else if (reevaluate)
                 {
@@ -587,12 +635,25 @@ namespace TaskbarFetch
 
         private void EvaluationTimerCallback(object state)
         {
-            if (Interlocked.Exchange(ref _evaluationInProgress, 1) != 0)
+            if (Interlocked.CompareExchange(ref _evaluationInProgress, 1, 0) != 0)
+            {
+                // A foreground notification can arrive while another evaluation is
+                // inspecting Explorer's windows. Queue one more pass instead of losing
+                // the notification and waiting for the pending-click timeout.
+                Interlocked.Exchange(ref _evaluationRequested, 1);
                 return;
+            }
 
             try
             {
-                EvaluatePendingClick();
+                do
+                {
+                    Interlocked.Exchange(ref _evaluationRequested, 0);
+                    EvaluatePendingClick();
+                }
+                while (Interlocked.Exchange(ref _evaluationRequested, 0) != 0 &&
+                       _enabled &&
+                       !_disposed);
             }
             catch (Exception ex)
             {
@@ -601,6 +662,8 @@ namespace TaskbarFetch
             finally
             {
                 Interlocked.Exchange(ref _evaluationInProgress, 0);
+                if (Interlocked.Exchange(ref _evaluationRequested, 0) != 0)
+                    ScheduleEvaluation(1);
             }
         }
 
@@ -616,8 +679,45 @@ namespace TaskbarFetch
             double ageMs = (DateTime.UtcNow - pending.StartedUtc).TotalMilliseconds;
             if (ageMs > PendingTimeoutMs)
             {
+                Logger.Log(
+                    "Taskbar click expired without a resolved window; pendingId=" + pending.Id +
+                    ", hit=" + pending.HitKind +
+                    ", thumbnailPreviewSeen=" + pending.SawThumbnailPreview + ".");
                 ClearPending();
                 return;
+            }
+
+            // A grouped app can briefly foreground its most-recent window before the
+            // thumbnail picker is ready. While the picker is visible, keep the click
+            // pending so the window the user actually chooses becomes the target.
+            if (pending.HitKind != TaskbarHitKind.ShellControl &&
+                WindowUtilities.IsTaskbarThumbnailPreviewVisible())
+            {
+                pending.SawThumbnailPreview = true;
+                if (!pending.ThumbnailPreviewWaitLogged)
+                {
+                    pending.ThumbnailPreviewWaitLogged = true;
+                    Logger.Log("Taskbar thumbnail picker detected; waiting for the selected window; pendingId=" + pending.Id + ".");
+                }
+
+                ScheduleEvaluation(Math.Min(PendingEvaluationIntervalMs, Math.Max(1, PendingTimeoutMs - (int)ageMs)));
+                return;
+            }
+
+            IntPtr foreground = NativeMethods.GetForegroundWindow();
+            bool foregroundIsCandidate = foreground != IntPtr.Zero &&
+                WindowUtilities.IsCandidateApplicationWindow(foreground);
+            bool foregroundIsAnotherWindowInSameGroup =
+                foregroundIsCandidate &&
+                foreground != pending.BeforeWindow &&
+                pending.BeforeWindow != IntPtr.Zero &&
+                WindowUtilities.AreInSameApplicationGroup(pending.BeforeWindow, foreground);
+
+            if (foregroundIsAnotherWindowInSameGroup)
+            {
+                int groupWindowCount = WindowUtilities.CountCandidateWindowsForTaskbarGroup(foreground);
+                if (WaitForGroupedWindowActivation(pending, groupWindowCount))
+                    return;
             }
 
             // Important special case: clicking the taskbar button for the currently-active
@@ -636,25 +736,27 @@ namespace TaskbarFetch
 
                 if (beforeMonitor == pending.TargetMonitor)
                 {
-                    Logger.Log("Same-monitor taskbar minimize preserved.");
+                    Logger.Log("Same-monitor taskbar minimize preserved; pendingId=" + pending.Id + ".");
                     ClearPending();
                     return;
                 }
 
-                if (WindowUtilities.IsCandidateApplicationWindow(pending.BeforeWindow))
+                if (!foregroundIsAnotherWindowInSameGroup &&
+                    WindowUtilities.IsCandidateApplicationWindow(pending.BeforeWindow))
                 {
                     bool moved = WindowMover.MoveWindowToMonitor(
                         pending.BeforeWindow,
                         pending.TargetMonitor,
                         pending.BeforeWasMaximized);
-                    Logger.Log(moved ? "Moved previously-active minimized window." : "Move of minimized window was not needed/failed.");
+                    Logger.Log(
+                        (moved ? "Moved previously-active minimized window." : "Move of minimized window was not needed/failed.") +
+                        " pendingId=" + pending.Id + ".");
                     ClearPending();
                     return;
                 }
             }
 
-            IntPtr foreground = NativeMethods.GetForegroundWindow();
-            if (foreground != IntPtr.Zero && WindowUtilities.IsCandidateApplicationWindow(foreground))
+            if (foregroundIsCandidate)
             {
                 IntPtr foregroundMonitor = NativeMethods.MonitorFromWindow(
                     foreground,
@@ -662,49 +764,105 @@ namespace TaskbarFetch
 
                 if (foreground != pending.BeforeWindow)
                 {
+                    int candidateWindowCount = WindowUtilities.CountCandidateWindowsForTaskbarGroup(foreground);
+                    if (WaitForGroupedWindowActivation(pending, candidateWindowCount))
+                        return;
+
+                    bool moved = false;
                     if (foregroundMonitor != pending.TargetMonitor)
                     {
-                        bool moved = WindowMover.MoveWindowToMonitor(
+                        moved = WindowMover.MoveWindowToMonitor(
                             foreground,
                             pending.TargetMonitor,
                             NativeMethods.IsZoomed(foreground));
-                        Logger.Log(moved ? "Moved newly-foreground window." : "Foreground move was not needed/failed.");
                     }
+                    Logger.Log(
+                        "Foreground selection resolved; pendingId=" + pending.Id +
+                        ", window=" + foreground.ToInt64() +
+                        ", candidateWindows=" + candidateWindowCount +
+                        ", moved=" + moved + ".");
                     ClearPending();
                     return;
                 }
 
                 // If the same window stayed foreground, this can be an app that does not
-                // minimize on a taskbar click. Move it directly only when accessibility
-                // positively identified an app button and the process has one normal
-                // top-level window. When multiple windows exist we keep the target pending
-                // so the user's thumbnail selection decides which HWND is moved.
-                if (foregroundMonitor != pending.TargetMonitor &&
-                    pending.HitKind == TaskbarHitKind.AppButton &&
-                    ageMs >= 260)
+                // minimize on a taskbar click. If a thumbnail picker was visible, its
+                // dismissal confirms the user's choice even when that choice is the same
+                // window. Otherwise, keep a multi-window app pending to avoid guessing.
+                if (MoveAlreadyActiveWindowOnCrossMonitorClick &&
+                    foregroundMonitor != pending.TargetMonitor &&
+                    (pending.HitKind == TaskbarHitKind.AppButton || pending.SawThumbnailPreview))
                 {
-                    uint processId;
-                    NativeMethods.GetWindowThreadProcessId(foreground, out processId);
-                    int topLevelCount = WindowUtilities.CountCandidateWindowsForProcess(processId);
-                    if (topLevelCount <= 1)
+                    if (ageMs < SameForegroundMoveDelayMs)
+                    {
+                        int delayMs = Math.Max(
+                            1,
+                            (int)Math.Ceiling(SameForegroundMoveDelayMs - ageMs));
+                        ScheduleEvaluation(delayMs);
+                        return;
+                    }
+
+                    int topLevelCount = WindowUtilities.CountCandidateWindowsForTaskbarGroup(foreground);
+                    if (topLevelCount <= 1 || pending.SawThumbnailPreview)
                     {
                         bool moved = WindowMover.MoveWindowToMonitor(
                             foreground,
                             pending.TargetMonitor,
                             NativeMethods.IsZoomed(foreground));
-                        Logger.Log(moved ? "Moved same foreground single-window app." : "Same-window move was not needed/failed.");
+                        Logger.Log(
+                            "Same-foreground selection resolved; pendingId=" + pending.Id +
+                            ", window=" + foreground.ToInt64() +
+                            ", candidateWindows=" + topLevelCount +
+                            ", moved=" + moved + ".");
                         ClearPending();
                         return;
+                    }
+
+                    if (!pending.GroupedWindowGraceLogged)
+                    {
+                        pending.GroupedWindowGraceLogged = true;
+                        Logger.Log(
+                            "Same foreground belongs to a multi-window app; waiting for thumbnail selection; pendingId=" +
+                            pending.Id + ", candidateWindows=" + topLevelCount + ".");
                     }
                 }
             }
 
-            // Keep the target alive briefly for grouped-taskbar thumbnail selection.
+            // Poll only while this taskbar click is unresolved. This also catches a
+            // thumbnail picker that appears just after the initial foreground change.
             int remaining = PendingTimeoutMs - (int)ageMs;
             if (remaining > 0)
-                ScheduleEvaluation(remaining + 20);
+                ScheduleEvaluation(Math.Min(PendingEvaluationIntervalMs, remaining));
             else
+            {
+                Logger.Log("Taskbar click timed out; pendingId=" + pending.Id + ", hit=" + pending.HitKind + ".");
                 ClearPending();
+            }
+        }
+
+        private bool WaitForGroupedWindowActivation(PendingClick pending, int candidateWindowCount)
+        {
+            if (pending.SawThumbnailPreview || candidateWindowCount <= 1)
+                return false;
+
+            if (pending.GroupedWindowGraceUntilUtc == DateTime.MinValue)
+            {
+                pending.GroupedWindowGraceUntilUtc = DateTime.UtcNow.AddMilliseconds(GroupedWindowGraceMs);
+                if (!pending.GroupedWindowGraceLogged)
+                {
+                    pending.GroupedWindowGraceLogged = true;
+                    Logger.Log(
+                        "Foreground changed within a multi-window app; briefly waiting for thumbnail selection; pendingId=" +
+                        pending.Id + ", candidateWindows=" + candidateWindowCount + ".");
+                }
+            }
+
+            double graceRemaining = (pending.GroupedWindowGraceUntilUtc - DateTime.UtcNow).TotalMilliseconds;
+            if (graceRemaining <= 0)
+                return false;
+
+            ScheduleEvaluation(Math.Max(1, Math.Min(PendingEvaluationIntervalMs, (int)Math.Ceiling(graceRemaining))));
+            return true;
         }
 
         private PendingClick GetPending()
@@ -757,7 +915,6 @@ namespace TaskbarFetch
         private sealed class HitTestRequest
         {
             public int PendingId;
-            public IntPtr Taskbar;
             public NativeMethods.POINT Point;
         }
 
@@ -770,6 +927,10 @@ namespace TaskbarFetch
             public bool BeforeWasMaximized;
             public DateTime StartedUtc;
             public TaskbarHitKind HitKind;
+            public bool SawThumbnailPreview;
+            public bool ThumbnailPreviewWaitLogged;
+            public bool GroupedWindowGraceLogged;
+            public DateTime GroupedWindowGraceUntilUtc;
         }
     }
 
@@ -788,13 +949,10 @@ namespace TaskbarFetch
         private const int ROLE_SYSTEM_BUTTONMENU = 0x39;
         private const int ROLE_SYSTEM_BUTTONDROPDOWNGRID = 0x3A;
 
-        public static TaskbarHitKind ClassifyTaskbarPoint(IntPtr taskbar, NativeMethods.POINT point)
+        public static TaskbarHitKind ClassifyTaskbarPoint(NativeMethods.POINT point)
         {
             try
             {
-                if (WindowUtilities.IsPointInNotificationArea(taskbar, point))
-                    return TaskbarHitKind.ShellControl;
-
                 IAccessible accessible;
                 object child;
                 int hr = NativeMethods.AccessibleObjectFromPoint(point, out accessible, out child);
@@ -1044,14 +1202,6 @@ namespace TaskbarFetch
             "Windows.UI.Core.CoreWindow"
         };
 
-        private static readonly HashSet<string> NotificationAreaClasses = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        {
-            "TrayNotifyWnd",
-            "NotifyIconOverflowWindow",
-            "TopLevelWindowForOverflowXamlIsland",
-            "ClockButton"
-        };
-
         private static readonly HashSet<string> ExcludedShellProcesses = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             "StartMenuExperienceHost",
@@ -1085,22 +1235,6 @@ namespace TaskbarFetch
             }
 
             return IntPtr.Zero;
-        }
-
-        public static bool IsPointInNotificationArea(IntPtr taskbar, NativeMethods.POINT point)
-        {
-            bool found = false;
-            NativeMethods.EnumChildWindows(taskbar, delegate(IntPtr child, IntPtr lParam)
-            {
-                string className = GetClassName(child);
-                if (NotificationAreaClasses.Contains(className) && PointInsideWindow(child, point))
-                {
-                    found = true;
-                    return false;
-                }
-                return true;
-            }, IntPtr.Zero);
-            return found;
         }
 
         public static bool PointInsideWindow(IntPtr hwnd, NativeMethods.POINT point)
@@ -1196,6 +1330,75 @@ namespace TaskbarFetch
             return count;
         }
 
+        public static int CountCandidateWindowsForTaskbarGroup(IntPtr hwnd)
+        {
+            if (IsFileExplorerWindow(hwnd))
+                return CountCandidateFileExplorerWindows();
+
+            uint processId;
+            NativeMethods.GetWindowThreadProcessId(hwnd, out processId);
+            return processId == 0 ? 0 : CountCandidateWindowsForProcess(processId);
+        }
+
+        public static bool AreInSameApplicationGroup(IntPtr first, IntPtr second)
+        {
+            if (first == IntPtr.Zero || second == IntPtr.Zero ||
+                !NativeMethods.IsWindow(first) || !NativeMethods.IsWindow(second))
+                return false;
+
+            if (IsFileExplorerWindow(first) && IsFileExplorerWindow(second))
+                return true;
+
+            uint firstProcessId;
+            uint secondProcessId;
+            NativeMethods.GetWindowThreadProcessId(first, out firstProcessId);
+            NativeMethods.GetWindowThreadProcessId(second, out secondProcessId);
+            return firstProcessId != 0 && firstProcessId == secondProcessId;
+        }
+
+        public static bool IsTaskbarThumbnailPreviewVisible()
+        {
+            bool found = false;
+            NativeMethods.EnumWindows(delegate(IntPtr hwnd, IntPtr lParam)
+            {
+                if (!NativeMethods.IsWindowVisible(hwnd))
+                    return true;
+
+                string className = GetClassName(hwnd);
+                if (className.Equals("TaskListThumbnailWnd", StringComparison.OrdinalIgnoreCase) ||
+                    className.Equals("TaskListOverlayWnd", StringComparison.OrdinalIgnoreCase))
+                {
+                    found = true;
+                    return false;
+                }
+
+                return true;
+            }, IntPtr.Zero);
+            return found;
+        }
+
+        private static int CountCandidateFileExplorerWindows()
+        {
+            int count = 0;
+            NativeMethods.EnumWindows(delegate(IntPtr hwnd, IntPtr lParam)
+            {
+                if (IsFileExplorerWindow(hwnd) && IsCandidateApplicationWindow(hwnd))
+                    count++;
+                return true;
+            }, IntPtr.Zero);
+            return count;
+        }
+
+        private static bool IsFileExplorerWindow(IntPtr hwnd)
+        {
+            if (hwnd == IntPtr.Zero || !NativeMethods.IsWindow(hwnd))
+                return false;
+
+            string className = GetClassName(hwnd);
+            return className.Equals("CabinetWClass", StringComparison.OrdinalIgnoreCase) ||
+                   className.Equals("ExploreWClass", StringComparison.OrdinalIgnoreCase);
+        }
+
         public static void ActivateWindow(IntPtr hwnd)
         {
             try
@@ -1279,6 +1482,49 @@ namespace TaskbarFetch
         private static string Quote(string path)
         {
             return "\"" + path + "\"";
+        }
+    }
+
+    internal static class UserSettingsManager
+    {
+        private const string SettingsKeyPath = @"Software\ThyannSeng\TaskbarFetch";
+        private const string MoveAlreadyActiveValueName = "MoveAlreadyActiveWindowOnCrossMonitorClick";
+        private const bool DefaultMoveAlreadyActiveWindowOnCrossMonitorClick = true;
+
+        public static bool GetMoveAlreadyActiveWindowOnCrossMonitorClick()
+        {
+            try
+            {
+                using (var key = Registry.CurrentUser.OpenSubKey(SettingsKeyPath, false))
+                {
+                    if (key == null)
+                        return DefaultMoveAlreadyActiveWindowOnCrossMonitorClick;
+
+                    object value = key.GetValue(MoveAlreadyActiveValueName);
+                    if (value is int)
+                        return (int)value != 0;
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogException("Failed to read user settings; using defaults", ex);
+            }
+
+            return DefaultMoveAlreadyActiveWindowOnCrossMonitorClick;
+        }
+
+        public static void SetMoveAlreadyActiveWindowOnCrossMonitorClick(bool enabled)
+        {
+            using (var key = Registry.CurrentUser.CreateSubKey(SettingsKeyPath))
+            {
+                if (key == null)
+                    throw new InvalidOperationException("Could not open the current-user TaskbarFetch settings key.");
+
+                key.SetValue(
+                    MoveAlreadyActiveValueName,
+                    enabled ? 1 : 0,
+                    RegistryValueKind.DWord);
+            }
         }
     }
 
@@ -1532,10 +1778,6 @@ namespace TaskbarFetch
         [DllImport("user32.dll")]
         [return: MarshalAs(UnmanagedType.Bool)]
         public static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
-
-        [DllImport("user32.dll")]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        public static extern bool EnumChildWindows(IntPtr hWndParent, EnumWindowsProc lpEnumFunc, IntPtr lParam);
 
         [DllImport("user32.dll")]
         public static extern IntPtr GetAncestor(IntPtr hwnd, uint gaFlags);

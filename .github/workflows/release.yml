@@ -1,4 +1,4 @@
-name: Release
+name: TaskbarFetch Release
 
 on:
   push:
@@ -18,7 +18,19 @@ jobs:
 
       - name: Build TaskbarFetch
         shell: cmd
-        run: Build.cmd
+        run: TaskbarFetch-Build.cmd
+
+      - name: Install Inno Setup compiler
+        shell: pwsh
+        run: .\scripts\Install-InnoSetupForBuild.ps1
+
+      - name: Build TaskbarFetch setup program
+        shell: pwsh
+        env:
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          $version = $env:TAG_NAME.Substring(1)
+          .\TaskbarFetch-Setup.ps1 -Version $version -CompilerPath "$env:TASKBARFETCH_ISCC"
 
       - name: Package release
         shell: powershell
@@ -30,6 +42,18 @@ jobs:
             throw "Release tag must use semantic versioning: vX.Y.Z or vX.Y.Z-prerelease."
           }
 
+          $releaseVersion = $tag.Substring(1)
+          $versionSource = Get-Content .\src\TaskbarFetch.cs -Raw
+          $versionMatch = [regex]::Match($versionSource, '\[assembly:\s*System\.Reflection\.AssemblyInformationalVersion\("([^"]+)"\)\]')
+          if (-not $versionMatch.Success -or $versionMatch.Groups[1].Value -ne $releaseVersion) {
+            throw "The release tag $tag must match the application informational version in src\TaskbarFetch.cs."
+          }
+
+          $setup = Join-Path $PWD "dist\TaskbarFetch-Setup-v$releaseVersion.exe"
+          if (-not (Test-Path -LiteralPath $setup -PathType Leaf)) {
+            throw "The setup program for $tag was not built."
+          }
+
           $stage = Join-Path $PWD "release-stage\TaskbarFetch"
           New-Item -ItemType Directory -Path $stage -Force | Out-Null
           $docs = Join-Path $stage "docs"
@@ -38,10 +62,6 @@ jobs:
           New-Item -ItemType Directory -Path $assets -Force | Out-Null
 
           Copy-Item .\dist\TaskbarFetch.exe $stage
-          Copy-Item .\Install.cmd $stage
-          Copy-Item .\Install.ps1 $stage
-          Copy-Item .\Uninstall.cmd $stage
-          Copy-Item .\Uninstall.ps1 $stage
           Copy-Item .\README.md $stage
           Copy-Item .\LICENSE $stage
           Copy-Item .\AUTHORS.md $stage
@@ -54,15 +74,33 @@ jobs:
           Copy-Item .\docs\TESTING.md $docs
           Copy-Item .\assets\* $assets
 
-          $zip = Join-Path $PWD "TaskbarFetch-$tag-windows.zip"
+          $zip = Join-Path $PWD "TaskbarFetch-$tag-windows-portable.zip"
           Compress-Archive -Path "$stage\*" -DestinationPath $zip -Force
 
+          $setupHash = (Get-FileHash $setup -Algorithm SHA256).Hash.ToLower()
           $exeHash = (Get-FileHash .\dist\TaskbarFetch.exe -Algorithm SHA256).Hash.ToLower()
           $zipHash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
           @(
+            "$setupHash  $(Split-Path $setup -Leaf)",
             "$exeHash  TaskbarFetch.exe",
             "$zipHash  $(Split-Path $zip -Leaf)"
           ) | Set-Content .\SHA256SUMS.txt -Encoding ascii
+
+          $changelog = Get-Content .\CHANGELOG.md -Raw
+          $changelogPattern = "(?ms)^## \[$([regex]::Escape($releaseVersion))\].*?(?=^## \[|\z)"
+          $changelogSection = [regex]::Match($changelog, $changelogPattern)
+          if (-not $changelogSection.Success) {
+            throw "CHANGELOG.md does not contain a section for $releaseVersion."
+          }
+
+          $releaseNotes = @"
+          $($changelogSection.Value.Trim())
+
+          ### Report a bug
+
+          If TaskbarFetch does not behave as expected, please [open a GitHub bug report](https://github.com/ThyannSeng/TaskbarFetch/issues/new?template=bug_report.yml). Include your Windows version, monitor layout, and steps to reproduce. Do not include private window titles or sensitive log content.
+          "@
+          Set-Content .\release-notes.md -Value $releaseNotes -Encoding UTF8
 
       - name: Create GitHub release
         shell: powershell
@@ -73,11 +111,12 @@ jobs:
           $tag = $env:TAG_NAME
           $releaseArgs = @(
             "release", "create", $tag,
-            ".\TaskbarFetch-$tag-windows.zip",
+            ".\dist\TaskbarFetch-Setup-v$($tag.Substring(1)).exe",
+            ".\TaskbarFetch-$tag-windows-portable.zip",
             ".\dist\TaskbarFetch.exe",
             ".\SHA256SUMS.txt",
             "--title", "TaskbarFetch $tag",
-            "--generate-notes"
+            "--notes-file", ".\release-notes.md"
           )
           if ($tag.Contains("-")) {
             $releaseArgs += "--prerelease"

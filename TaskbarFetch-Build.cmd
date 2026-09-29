@@ -1,4 +1,5 @@
 @echo off
+title TaskbarFetch Build
 setlocal
 cd /d "%~dp0"
 
@@ -7,7 +8,7 @@ if not exist "%CSC%" set "CSC=%WINDIR%\Microsoft.NET\Framework\v4.0.30319\csc.ex
 
 if not exist "%CSC%" (
   echo ERROR: Windows .NET Framework compiler csc.exe was not found.
-  echo Enable/install .NET Framework 4.8, then run Build.cmd again.
+  echo Enable/install .NET Framework 4.8, then run TaskbarFetch-Build.cmd again.
   exit /b 1
 )
 

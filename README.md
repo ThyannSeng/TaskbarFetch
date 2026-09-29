@@ -12,7 +12,7 @@
   <strong>Created and maintained by Thyann Seng</strong>
 </p>
 
-> **Current version: v1.0.0-beta.1 (pre-release).** Please use the [multi-monitor test checklist](docs/TESTING.md) to validate your setup.
+> **Latest GitHub release: v1.0.0-beta.1 (pre-release).** A local v1.0.0-beta.2 test build is being validated before publication. Please use the [multi-monitor test checklist](docs/TESTING.md) to validate your setup.
 
 TaskbarFetch is a lightweight Windows 11 tray utility for multi-monitor setups. It makes the Windows taskbar behave in a way many multi-monitor users expect: if an application's window is on one monitor and you click that application's taskbar button on another monitor, TaskbarFetch moves the existing window to the monitor you clicked.
 
@@ -68,57 +68,58 @@ If Windows offers a setting for where taskbar app buttons appear, choose an opti
 
 ## Installation
 
-### Option 1: GitHub release
+### Install from a GitHub release
 
-Download the latest Windows release ZIP from the repository's **Releases** page, extract it, and run:
-
-```text
-Install.cmd
-```
-
-TaskbarFetch is installed for the current user at:
+Download and run the **TaskbarFetch Setup** `.exe` from the repository's [Releases](https://github.com/ThyannSeng/TaskbarFetch/releases) page. Follow the setup wizard. It installs for the current Windows user at:
 
 ```text
-%LOCALAPPDATA%\TaskbarFetch\TaskbarFetch.exe
+%LOCALAPPDATA%\Programs\TaskbarFetch
 ```
 
-The installer also enables **Start with Windows** for the current user and launches TaskbarFetch.
+Setup adds TaskbarFetch to the Start menu and Windows' installed apps list. No administrator rights are required. The wizard offers a **Start TaskbarFetch automatically when I sign in** option; this can also be changed later from the tray menu. On the final page, leave **Launch TaskbarFetch** checked to start it immediately.
 
-No administrator rights are required.
+When updating, close TaskbarFetch from its system-tray menu first. Setup detects a running copy and asks you to close it; it does not force-close the application.
 
-### Option 2: Build from source
+To uninstall, use **Settings > Apps > Installed apps > TaskbarFetch > Uninstall** or the TaskbarFetch entry in the Start menu. The uninstaller removes the managed program files, Start menu shortcut, and startup entry if it still points to the installed TaskbarFetch executable. Personal settings and diagnostic logs are preserved.
 
-Clone the repository and run:
+### Build the setup program from source
 
-```bat
-Build.cmd
+Install the Inno Setup 6.7.3 compiler from its [official downloads page](https://jrsoftware.org/isdl.php), then run:
+
+```powershell
+.\TaskbarFetch-Build.cmd
+.\TaskbarFetch-Setup.ps1
 ```
 
-The executable will be created at:
+The app executable and setup program will be created at:
 
 ```text
 dist\TaskbarFetch.exe
+dist\TaskbarFetch-Setup-v<version>.exe
 ```
 
-Then run `Install.cmd`, or launch the executable directly.
+When that setup program is run from this source checkout, it also creates a `TaskbarFetch.lnk` shortcut in the project folder that points to the installed app. A setup program downloaded from a release does not create a shortcut beside the downloaded file.
+
+Inno Setup 6.7.3 is free for non-commercial use. Review its [license terms](https://jrsoftware.org/isorder.php) if TaskbarFetch will be used in a commercial context.
 
 The repository also contains `TaskbarFetch.csproj` for Visual Studio/MSBuild users.
 
 ## Portable use
 
-From a source checkout, run:
+Extract the portable release ZIP and run `TaskbarFetch.exe`, or build the app and run:
 
 ```text
-RunPortable.cmd
+TaskbarFetch-Portable.cmd
 ```
 
-For a release package, you can run `TaskbarFetch.exe` directly without installing it.
+Portable use does not create an installed-app entry or Start menu shortcut.
 
 ## Tray menu
 
 Right-click the TaskbarFetch icon in the notification area:
 
 - **Pause / Resume** temporarily disables or enables window-moving behavior.
+- **Move already-active window to clicked monitor** controls whether a window that remains active is moved when its taskbar button is clicked on another monitor. This setting is enabled by default and saved for the current user.
 - **Start with Windows** toggles per-user startup.
 - **Open log folder** opens TaskbarFetch's local diagnostic folder.
 - **About** displays the application version and creator credit.
@@ -131,6 +132,8 @@ Double-clicking the tray icon also toggles Pause/Resume.
 ### Clicking an app on another monitor
 
 If an application is on Monitor 1 and you click its taskbar button on Monitor 2, the selected application window is moved to Monitor 2.
+
+When **Move already-active window to clicked monitor** is enabled, clicking the taskbar button of a window that stays active moves it to the clicked monitor even if Windows does not minimize or otherwise switch it first. Turn off this option in the tray menu to leave that window on its current monitor.
 
 ### Clicking an app on its current monitor
 
@@ -205,10 +208,10 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for more detail.
 ### Simple Windows build
 
 ```bat
-Build.cmd
+TaskbarFetch-Build.cmd
 ```
 
-`Build.cmd` uses the Windows .NET Framework C# compiler already present on a normal Windows installation and creates:
+`TaskbarFetch-Build.cmd` uses the Windows .NET Framework C# compiler already present on a normal Windows installation and creates:
 
 ```text
 dist\TaskbarFetch.exe
@@ -222,17 +225,13 @@ Open `TaskbarFetch.csproj` or build it with MSBuild on Windows.
 
 The most important behavior depends on real Explorer taskbars and monitor topology. See [docs/TESTING.md](docs/TESTING.md) for the manual regression matrix used for multi-monitor validation.
 
-If you encounter an issue, please include your Windows version, monitor arrangement, resolutions, scaling percentages, and whether any taskbar customization software is installed.
+## Report a bug
+
+If TaskbarFetch does not move a window as expected, please [open a GitHub bug report](https://github.com/ThyannSeng/TaskbarFetch/issues/new?template=bug_report.yml). Include your Windows version, monitor arrangement, resolutions, scaling percentages, steps to reproduce, and whether any taskbar customization software is installed. You can also include relevant lines from `%LOCALAPPDATA%\TaskbarFetch\TaskbarFetch.log`; review the log before sharing it. TaskbarFetch does not record window titles or taskbar button names.
 
 ## Uninstall
 
-Run:
-
-```text
-Uninstall.cmd
-```
-
-This stops TaskbarFetch, removes its current-user startup entry, and deletes its installed files from `%LOCALAPPDATA%\TaskbarFetch`.
+Use **Settings > Apps > Installed apps > TaskbarFetch > Uninstall**, or select **Uninstall TaskbarFetch** from the Start menu. Exit the tray app first. The uninstaller will not force-close a running copy. Diagnostic logs under `%LOCALAPPDATA%\TaskbarFetch` and saved preferences are preserved; portable copies elsewhere are not removed.
 
 ## Project ownership and icon provenance
 

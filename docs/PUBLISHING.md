@@ -23,14 +23,18 @@ open-source
 
 ## Create a release
 
-Before publishing a new version, update `CITATION.cff`, `CHANGELOG.md`, the `AssemblyInformationalVersion` attribute in `src/TaskbarFetch.cs`, and the release status in `README.md`. Then create and push a unique semantic-version tag:
+Build and manually test the candidate using the scenarios in [the multi-monitor test checklist](TESTING.md). Do not publish or tag it until the taskbar-button behavior passes on the target Windows setup.
+
+Before publishing a validated version, update `CITATION.cff`, `CHANGELOG.md`, the `AssemblyInformationalVersion` attribute in `src/TaskbarFetch.cs`, and the release status in `README.md`. Then create and push a unique semantic-version tag:
 
 ```bash
 git tag v1.0.0-beta.2
 git push origin v1.0.0-beta.2
 ```
 
-The release workflow builds the executable on Windows, creates a ZIP containing the installer and linked documentation, calculates SHA-256 checksums, and publishes a GitHub release. A semantic-version tag with a pre-release suffix, such as `-beta.2` or `-rc.1`, is marked as a pre-release. A stable tag such as `v1.0.0` is published as a normal release.
+The release workflow builds the executable and branded setup program on Windows, creates a separate portable ZIP, calculates SHA-256 checksums for each download, and publishes the matching changelog section with a direct bug-report link on the GitHub release. The release tag must match the application informational version in `src/TaskbarFetch.cs`. A semantic-version tag with a pre-release suffix, such as `-beta.2` or `-rc.1`, is marked as a pre-release. A stable tag such as `v1.0.0` is published as a normal release.
+
+The setup program is compiled with Inno Setup 6.7.3 from its official signed release. The CI helper verifies the publisher signature before installing the compiler on the temporary runner.
 
 ## Recommended repository settings
 

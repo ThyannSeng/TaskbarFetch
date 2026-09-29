@@ -15,7 +15,7 @@ Thank you for considering a contribution.
 From a Windows command prompt:
 
 ```bat
-Build.cmd
+TaskbarFetch-Build.cmd
 ```
 
 The executable is written to:
