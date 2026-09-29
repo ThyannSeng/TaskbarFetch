@@ -58,7 +58,8 @@ TaskbarFetch moves the existing Chrome window to Monitor 2 and activates it.
 - Windows 11
 - The standard Windows Explorer taskbar
 - Two or more monitors for the primary use case
-- .NET Framework 4.8 or later for source builds
+- .NET Framework 4.8 or later to run TaskbarFetch
+- .NET 10 SDK or newer to build from source
 
 For the intended workflow, enable:
 
