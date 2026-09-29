@@ -1,0 +1,11 @@
+<Project>
+  <PropertyGroup>
+    <!-- Keep local scratch tools outside SDK reference resolution and compile globs. -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);work/**</DefaultItemExcludes>
+    <TaskbarFetchVersion>1.0.0-beta.2</TaskbarFetchVersion>
+    <TaskbarFetchAssemblyVersion>1.0.0.0</TaskbarFetchAssemblyVersion>
+    <TaskbarFetchFileVersion>1.0.0.0</TaskbarFetchFileVersion>
+    <TaskbarFetchPortableFilePrefix>TaskbarFetch-Portable-v</TaskbarFetchPortableFilePrefix>
+    <TaskbarFetchSetupFilePrefix>TaskbarFetch-Setup-v</TaskbarFetchSetupFilePrefix>
+  </PropertyGroup>
+</Project>

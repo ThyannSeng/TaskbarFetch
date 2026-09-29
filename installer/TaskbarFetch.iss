@@ -1,8 +1,11 @@
 #ifndef AppVersion
-  #define AppVersion "1.0.0-beta.2"
+  #error AppVersion must be supplied by TaskbarFetch-Setup-Build.cmd.
 #endif
 #ifndef AppFileVersion
-  #define AppFileVersion "1.0.0.0"
+  #error AppFileVersion must be supplied by TaskbarFetch-Setup-Build.cmd.
+#endif
+#ifndef AppPortableFileName
+  #error AppPortableFileName must be supplied by TaskbarFetch-Setup-Build.cmd.
 #endif
 
 #define MyAppName "TaskbarFetch"
@@ -42,7 +45,7 @@ LicenseFile=..\LICENSE
 SetupIconFile=..\assets\TaskbarFetch.ico
 UninstallDisplayIcon={app}\TaskbarFetch.exe
 UninstallDisplayName=TaskbarFetch {#AppVersion}
-OutputDir=..\dist
+OutputDir=..
 OutputBaseFilename=TaskbarFetch-Setup-v{#AppVersion}
 Compression=lzma2/ultra64
 SolidCompression=yes
@@ -54,7 +57,7 @@ MinVersion=10.0.22000
 Name: "startup"; Description: "Start TaskbarFetch automatically when I sign in"; GroupDescription: "Startup options:"; Flags: unchecked
 
 [Files]
-Source: "..\dist\TaskbarFetch.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\{#AppPortableFileName}"; DestDir: "{app}"; DestName: "{#MyAppExeName}"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\TaskbarFetch"; Filename: "{app}\TaskbarFetch.exe"; WorkingDir: "{app}"
@@ -95,14 +98,12 @@ end;
 function GetProjectRoot(Param: String): String;
 var
   SetupDirectory: String;
-  Candidate: String;
 begin
   Result := '';
   SetupDirectory := ExtractFileDir(ExpandConstant('{srcexe}'));
-  Candidate := ExtractFileDir(SetupDirectory);
-  if FileExists(Candidate + '\TaskbarFetch.csproj') and
-     FileExists(Candidate + '\dist\TaskbarFetch.exe') then
-    Result := Candidate;
+  if FileExists(SetupDirectory + '\TaskbarFetch.csproj') and
+     FileExists(SetupDirectory + '\{#AppPortableFileName}') then
+    Result := SetupDirectory;
 end;
 
 function ShouldCreateProjectShortcut: Boolean;
@@ -132,7 +133,8 @@ begin
     ExistingTarget := Trim(ExistingTarget);
     Result :=
       SameText(ExistingTarget, ExpandConstant('{app}\TaskbarFetch.exe')) or
-      SameText(ExistingTarget, ProjectRoot + '\dist\TaskbarFetch.exe') or
+      SameText(ExistingTarget, ProjectRoot + '\{#AppPortableFileName}') or
+      SameText(ExistingTarget, ProjectRoot + '\TaskbarFetch.exe') or
       SameText(ExistingTarget, ExpandConstant('{localappdata}\Programs\TaskbarFetch\TaskbarFetch.exe')) or
       SameText(ExistingTarget, ExpandConstant('{localappdata}\TaskbarFetch\TaskbarFetch.exe'));
   except

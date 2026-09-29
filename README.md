@@ -87,32 +87,31 @@ To uninstall, use **Settings > Apps > Installed apps > TaskbarFetch > Uninstall*
 Install the Inno Setup 6.7.3 compiler from its [official downloads page](https://jrsoftware.org/isdl.php), then run:
 
 ```powershell
-.\TaskbarFetch-Build.cmd
-.\TaskbarFetch-Setup.ps1
+.\TaskbarFetch-Setup-Build.cmd
 ```
 
-The app executable and setup program will be created at:
+The command rebuilds the portable app from the current source, then creates both files in the project folder:
 
 ```text
-dist\TaskbarFetch.exe
-dist\TaskbarFetch-Setup-v<version>.exe
+TaskbarFetch-Portable-v<version>.exe
+TaskbarFetch-Setup-v<version>.exe
 ```
 
 When that setup program is run from this source checkout, it also creates a `TaskbarFetch.lnk` shortcut in the project folder that points to the installed app. A setup program downloaded from a release does not create a shortcut beside the downloaded file.
 
 Inno Setup 6.7.3 is free for non-commercial use. Review its [license terms](https://jrsoftware.org/isorder.php) if TaskbarFetch will be used in a commercial context.
 
-The repository also contains `TaskbarFetch.csproj` for Visual Studio/MSBuild users.
+Open `TaskbarFetch.sln` in Visual Studio to work with the application and automated tests, or open `TaskbarFetch.csproj` for the application alone. MSBuild uses the same versioned portable filename as the command-line build.
 
 ## Portable use
 
-Extract the portable release ZIP and run `TaskbarFetch.exe`, or build the app and run:
+Run `TaskbarFetch-Portable-v<version>.exe` directly from the project folder, or extract the portable release ZIP and run that versioned executable. `TaskbarFetch-Portable-Build.cmd` reads the version from `Directory.Build.props` and generates the matching filename. The optional launcher opens the executable for the current project version and rebuilds it if it is missing or older than its source files:
 
 ```text
-TaskbarFetch-Portable.cmd
+TaskbarFetch-Portable-Launch.cmd
 ```
 
-Portable use does not create an installed-app entry or Start menu shortcut.
+Portable use does not create an installed-app entry or Start menu shortcut, and the Windows uninstaller does not remove portable copies. Before deleting or moving a portable executable, turn off **Start with Windows** from the tray menu if it is enabled.
 
 ## Tray menu
 
@@ -208,22 +207,31 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for more detail.
 ### Simple Windows build
 
 ```bat
-TaskbarFetch-Build.cmd
+TaskbarFetch-Portable-Build.cmd
 ```
 
-`TaskbarFetch-Build.cmd` uses the Windows .NET Framework C# compiler already present on a normal Windows installation and creates:
+`TaskbarFetch-Portable-Build.cmd` requires the .NET 10 SDK or newer. It reads the version from `Directory.Build.props`, builds `TaskbarFetch.csproj` in Release configuration, checks the executable's embedded version metadata, and copies the matching versioned executable into the project folder. The application targets .NET Framework 4.8; the .NET SDK is the build toolchain. For example, project version `1.0.0-beta.2` creates:
 
 ```text
-dist\TaskbarFetch.exe
+TaskbarFetch-Portable-v1.0.0-beta.2.exe
 ```
 
 ### Visual Studio / MSBuild
 
-Open `TaskbarFetch.csproj` or build it with MSBuild on Windows.
+Open `TaskbarFetch.sln` or build `TaskbarFetch.csproj` with MSBuild on Windows using the .NET 10 SDK or newer. The application itself targets .NET Framework 4.8.
+
+## Repository layout
+
+- `src\`: app entry point, tray UI, hook coordination, accessibility, window management, preferences, logging, and native API definitions.
+- `scripts\`: portable build, version validation, optional launcher, and CI setup helpers.
+- `installer\`: Inno Setup source and the setup-build helper.
+- `tests\`: platform-independent geometry tests and Windows installer lifecycle checks.
+- `docs\`: architecture, manual test matrix, and publishing instructions.
+- `assets\`: TaskbarFetch icon files and their generator.
 
 ## Testing
 
-The most important behavior depends on real Explorer taskbars and monitor topology. See [docs/TESTING.md](docs/TESTING.md) for the manual regression matrix used for multi-monitor validation.
+Run `dotnet restore .\tests\TaskbarFetch.GeometryTests\TaskbarFetch.GeometryTests.csproj --locked-mode`, then `dotnet test .\tests\TaskbarFetch.GeometryTests\TaskbarFetch.GeometryTests.csproj --configuration Release --no-restore` for reproducible automated geometry checks; these require the .NET 10 SDK. The most important behavior still depends on real Explorer taskbars and monitor topology; see [docs/TESTING.md](docs/TESTING.md) for the manual regression matrix used for multi-monitor validation.
 
 ## Report a bug
 
@@ -231,7 +239,7 @@ If TaskbarFetch does not move a window as expected, please [open a GitHub bug re
 
 ## Uninstall
 
-Use **Settings > Apps > Installed apps > TaskbarFetch > Uninstall**, or select **Uninstall TaskbarFetch** from the Start menu. Exit the tray app first. The uninstaller will not force-close a running copy. Diagnostic logs under `%LOCALAPPDATA%\TaskbarFetch` and saved preferences are preserved; portable copies elsewhere are not removed.
+Use **Settings > Apps > Installed apps > TaskbarFetch > Uninstall**, or select **Uninstall TaskbarFetch** from the Start menu. Exit the tray app first. The uninstaller will not force-close a running copy. It removes the installed copy under `%LOCALAPPDATA%\Programs\TaskbarFetch` and its managed shortcuts; it does not delete the project source folder or portable `TaskbarFetch-Portable-v<version>.exe`. Diagnostic logs under `%LOCALAPPDATA%\TaskbarFetch` and saved preferences are preserved.
 
 ## Project ownership and icon provenance
 

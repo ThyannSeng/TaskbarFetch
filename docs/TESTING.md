@@ -2,6 +2,19 @@
 
 TaskbarFetch depends on real Windows Explorer taskbar behavior, so the most important tests are performed on a physical or virtual Windows 11 desktop with multiple displays.
 
+## Automated tests
+
+Run the platform-independent window-geometry tests from the repository root with the .NET 10 SDK:
+
+```powershell
+dotnet restore .\tests\TaskbarFetch.GeometryTests\TaskbarFetch.GeometryTests.csproj --locked-mode
+dotnet test .\tests\TaskbarFetch.GeometryTests\TaskbarFetch.GeometryTests.csproj --configuration Release --no-restore
+```
+
+These tests cover proportional placement, negative desktop coordinates, destination-boundary clamping, minimum window size, and invalid work areas. They complement the manual matrix below; they do not replace real Explorer and multi-monitor testing.
+
+The Windows CI workflow also runs `tests\InstallerLifecycle.ps1` on a clean runner account. That test temporarily creates per-user startup, installed-app, and Start menu entries. It refuses to run if it finds an existing TaskbarFetch installation, startup entry, or shortcut; use a disposable Windows account or VM for manual runs.
+
 ## Core manual test matrix
 
 Test each scenario with TaskbarFetch active:

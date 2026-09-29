@@ -4,10 +4,18 @@
     <TargetFramework>net48</TargetFramework>
     <UseWindowsForms>true</UseWindowsForms>
     <RootNamespace>TaskbarFetch</RootNamespace>
-    <AssemblyName>TaskbarFetch</AssemblyName>
+    <AssemblyName>$(TaskbarFetchPortableFilePrefix)$(TaskbarFetchVersion)</AssemblyName>
+    <AssemblyTitle>TaskbarFetch</AssemblyTitle>
+    <Product>TaskbarFetch</Product>
+    <Company>Thyann Seng</Company>
+    <Copyright>Copyright (c) 2026 Thyann Seng</Copyright>
+    <Description>Move an existing app window to the monitor whose taskbar button was clicked.</Description>
+    <Version>$(TaskbarFetchVersion)</Version>
+    <InformationalVersion>$(TaskbarFetchVersion)</InformationalVersion>
+    <AssemblyVersion>$(TaskbarFetchAssemblyVersion)</AssemblyVersion>
+    <FileVersion>$(TaskbarFetchFileVersion)</FileVersion>
     <ApplicationIcon>assets\TaskbarFetch.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <LangVersion>latest</LangVersion>
     <Nullable>disable</Nullable>
     <Platforms>AnyCPU</Platforms>
@@ -16,5 +24,9 @@
 
   <ItemGroup>
     <Reference Include="Accessibility" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="tests\**\*.cs" />
   </ItemGroup>
 </Project>

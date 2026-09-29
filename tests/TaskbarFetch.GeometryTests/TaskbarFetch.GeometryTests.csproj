@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <Nullable>enable</Nullable>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MSTest" Version="4.1.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\src\WindowGeometry.cs" Link="WindowGeometry.cs" />
+    <Compile Include="..\..\src\PendingClickStore.cs" Link="PendingClickStore.cs" />
+  </ItemGroup>
+</Project>

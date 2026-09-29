@@ -14,18 +14,18 @@ TaskbarFetch is a single-process Windows tray application designed to remain sma
 
 ## Main components
 
-The current implementation intentionally keeps the runtime in one source file to reduce moving parts in the initial release:
+The runtime is split by responsibility under `src\`:
 
 - `Program`: single-instance startup and application lifetime.
 - `TrayApplicationContext`: tray icon and commands.
 - `TaskbarFetchEngine`: mouse/foreground event coordination.
-- `AccessibilityHitTester`: taskbar accessibility hit-testing.
-- `WindowMover`: state-preserving monitor movement.
-- `WindowUtilities`: window enumeration and classification helpers.
-- `StartupManager`: per-user startup registration.
-- `UserSettingsManager`: current-user preferences and defaults.
+- `AccessibilityHitTesting`: taskbar accessibility classification.
+- `WindowManagement`: state-preserving movement, window classification, and monitor data.
+- `UserPreferences`: per-user startup registration and saved settings.
 - `Logger`: local diagnostics.
 - `NativeMethods`: Win32 interop definitions.
+
+`Directory.Build.props` is the single version source for the project, command-line builds, Visual Studio builds, installer, and release workflow. `scripts\TaskbarFetch-Version.ps1` validates the version fields and derives the portable and setup filenames.
 
 Per-click diagnostics record timing, hit-test classification, and window handles/counts only. They do not record window titles or taskbar button names.
 

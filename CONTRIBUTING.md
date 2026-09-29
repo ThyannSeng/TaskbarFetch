@@ -15,16 +15,25 @@ Thank you for considering a contribution.
 From a Windows command prompt:
 
 ```bat
-TaskbarFetch-Build.cmd
+TaskbarFetch-Portable-Build.cmd
 ```
 
-The executable is written to:
+The build requires the .NET 10 SDK or newer. It builds the application project in Release configuration, verifies the generated version metadata, and writes the versioned portable executable to the project folder. Its name comes from `TaskbarFetchVersion` in `Directory.Build.props`:
 
 ```text
-dist\TaskbarFetch.exe
+TaskbarFetch-Portable-v<version>.exe
 ```
 
-A Visual Studio/MSBuild project is also provided as `TaskbarFetch.csproj`.
+The application is split by responsibility under `src\`. Keep Windows hooks and native API details isolated from tray UI, window management, preferences, and logging. Add automated coverage for platform-independent behavior where practical, and update the manual multi-monitor checklist when behavior changes.
+
+Run the automated tests before submitting changes:
+
+```powershell
+dotnet restore .\tests\TaskbarFetch.GeometryTests\TaskbarFetch.GeometryTests.csproj --locked-mode
+dotnet test .\tests\TaskbarFetch.GeometryTests\TaskbarFetch.GeometryTests.csproj --configuration Release --no-restore
+```
+
+Open `TaskbarFetch.sln` in Visual Studio to work with the app and automated tests. The standalone app project is `TaskbarFetch.csproj`.
 
 ## Pull requests
 

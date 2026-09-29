@@ -8,6 +8,7 @@ The project follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- Prevent an older asynchronous click evaluation from updating or clearing a newer pending taskbar click.
 - Avoid rejecting a taskbar click only because its coordinates fall inside a notification-area child-window rectangle. Explorer can report broad or overlapping child bounds; recognized shell controls are still ignored by their accessible names.
 - Recheck the same-foreground move at its short settle point instead of leaving it pending until the grouped-thumbnail timeout.
 - Queue another evaluation when a foreground event overlaps an active evaluation, so the event is not lost until the pending-click timeout.
@@ -26,6 +27,13 @@ The project follows [Semantic Versioning](https://semver.org/).
 - Let users opt into startup during setup, while preserving existing TaskbarFetch startup state on updates and removing it only when it still points to the managed installation.
 - Preserve saved preferences and diagnostic logs when uninstalling; refuse installation or removal while TaskbarFetch is running.
 - Build a portable ZIP separately from the installable setup program.
+- Name portable and setup executables with the configured version; add separate portable-build, portable-launch, and setup-build commands.
+
+### Build and verification
+
+- Centralize product and assembly versions for SDK project builds, Visual Studio builds, installer metadata, and release packaging.
+- Build portable and setup executables through the versioned SDK project and verify their embedded product versions before packaging.
+- Add a Visual Studio solution, locked geometry tests, and Windows CI coverage for setup and uninstall behavior.
 
 ## [1.0.0-beta.1] - 2026-09-29
 
