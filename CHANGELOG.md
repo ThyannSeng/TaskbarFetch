@@ -32,8 +32,6 @@ The project follows [Semantic Versioning](https://semver.org/).
 - Replace the script-based install and removal flow with a branded setup wizard and Windows uninstaller. Installation and removal require TaskbarFetch to be closed; setup does not force-close the app.
 - Preserve the existing installation directory and startup preference during updates. The uninstaller removes the managed program files and shortcuts, and removes the startup entry only when it still points to the managed installation.
 - Preserve user preferences and diagnostic logs after uninstalling.
-- Give the portable build, portable launcher, and setup builder explicit `TaskbarFetch-...` command names.
-- Keep the portable app and installer as distinct downloads, with versioned filenames generated from the central project version.
 
 ## [1.0.0-beta.1] - 2026-09-29
 
