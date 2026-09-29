@@ -22,10 +22,20 @@ jobs:
 
       - name: Package release
         shell: powershell
+        env:
+          TAG_NAME: ${{ github.ref_name }}
         run: |
-          $tag = "${{ github.ref_name }}"
+          $tag = $env:TAG_NAME
+          if ($tag -notmatch '^v\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$') {
+            throw "Release tag must use semantic versioning: vX.Y.Z or vX.Y.Z-prerelease."
+          }
+
           $stage = Join-Path $PWD "release-stage\TaskbarFetch"
           New-Item -ItemType Directory -Path $stage -Force | Out-Null
+          $docs = Join-Path $stage "docs"
+          New-Item -ItemType Directory -Path $docs -Force | Out-Null
+          $assets = Join-Path $stage "assets"
+          New-Item -ItemType Directory -Path $assets -Force | Out-Null
 
           Copy-Item .\dist\TaskbarFetch.exe $stage
           Copy-Item .\Install.cmd $stage
@@ -34,6 +44,15 @@ jobs:
           Copy-Item .\Uninstall.ps1 $stage
           Copy-Item .\README.md $stage
           Copy-Item .\LICENSE $stage
+          Copy-Item .\AUTHORS.md $stage
+          Copy-Item .\CHANGELOG.md $stage
+          Copy-Item .\CITATION.cff $stage
+          Copy-Item .\CONTRIBUTING.md $stage
+          Copy-Item .\SECURITY.md $stage
+          Copy-Item .\THIRD_PARTY_NOTICES.md $stage
+          Copy-Item .\docs\ARCHITECTURE.md $docs
+          Copy-Item .\docs\TESTING.md $docs
+          Copy-Item .\assets\* $assets
 
           $zip = Join-Path $PWD "TaskbarFetch-$tag-windows.zip"
           Compress-Archive -Path "$stage\*" -DestinationPath $zip -Force
@@ -49,10 +68,18 @@ jobs:
         shell: powershell
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ github.ref_name }}
         run: |
-          gh release create "${{ github.ref_name }}" `
-            ".\TaskbarFetch-${{ github.ref_name }}-windows.zip" `
-            ".\dist\TaskbarFetch.exe" `
-            ".\SHA256SUMS.txt" `
-            --title "TaskbarFetch ${{ github.ref_name }}" `
-            --generate-notes
+          $tag = $env:TAG_NAME
+          $releaseArgs = @(
+            "release", "create", $tag,
+            ".\TaskbarFetch-$tag-windows.zip",
+            ".\dist\TaskbarFetch.exe",
+            ".\SHA256SUMS.txt",
+            "--title", "TaskbarFetch $tag",
+            "--generate-notes"
+          )
+          if ($tag.Contains("-")) {
+            $releaseArgs += "--prerelease"
+          }
+          gh @releaseArgs

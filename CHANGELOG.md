@@ -4,11 +4,11 @@ All notable changes to TaskbarFetch are documented here.
 
 The project follows [Semantic Versioning](https://semver.org/).
 
-## [1.0.0] - 2026-09-29
+## [1.0.0-beta.1] - 2026-09-29
 
 ### Added
 
-- Initial public release.
+- Initial pre-release candidate for testing.
 - Move an existing application window to the monitor whose taskbar button was clicked.
 - Support for primary and secondary Windows 11 taskbars.
 - Preserve maximized, minimized, and normal window behavior when moving.

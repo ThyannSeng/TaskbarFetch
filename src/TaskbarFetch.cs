@@ -25,6 +25,7 @@ using Accessibility;
 [assembly: System.Reflection.AssemblyDescription("Move an existing app window to the monitor whose taskbar button was clicked.")]
 [assembly: System.Reflection.AssemblyVersion("1.0.0.0")]
 [assembly: System.Reflection.AssemblyFileVersion("1.0.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersion("1.0.0-beta.1")]
 
 namespace TaskbarFetch
 {
@@ -137,7 +138,7 @@ namespace TaskbarFetch
             aboutItem.Click += delegate
             {
                 MessageBox.Show(
-                    "TaskbarFetch 1.0.0\r\n" +
+                    "TaskbarFetch " + GetInformationalVersion() + "\r\n" +
                     "Created by Thyann Seng\r\n\r\n" +
                     "Click an application's taskbar button on the monitor where you want that window to appear. " +
                     "If Windows shows thumbnail previews for a grouped app, choose the desired thumbnail.\r\n\r\n" +
@@ -166,6 +167,19 @@ namespace TaskbarFetch
             // Install the global hooks only after WinForms has entered its message loop.
             // Both WH_MOUSE_LL and SetWinEventHook rely on that loop for delivery.
             Application.Idle += StartEngineOnFirstIdle;
+        }
+
+        private static string GetInformationalVersion()
+        {
+            var assembly = typeof(TrayApplicationContext).Assembly;
+            var attribute = (System.Reflection.AssemblyInformationalVersionAttribute)
+                Attribute.GetCustomAttribute(
+                    assembly,
+                    typeof(System.Reflection.AssemblyInformationalVersionAttribute));
+
+            return attribute != null
+                ? attribute.InformationalVersion
+                : assembly.GetName().Version.ToString();
         }
 
         private void StartEngineOnFirstIdle(object sender, EventArgs e)

@@ -1,6 +1,6 @@
 # Publishing TaskbarFetch on GitHub
 
-The repository is prepared for a `main` branch and semantic-version tags such as `v1.0.0`.
+The repository is published at [github.com/ThyannSeng/TaskbarFetch](https://github.com/ThyannSeng/TaskbarFetch). The initial pre-release candidate is `v1.0.0-beta.1`.
 
 ## Suggested repository description
 
@@ -21,31 +21,16 @@ productivity
 open-source
 ```
 
-## First push
+## Create a release
 
-Create an empty GitHub repository named `TaskbarFetch`, then from this folder run:
-
-```bash
-git init
-git add .
-git commit -m "Initial release of TaskbarFetch"
-git branch -M main
-git remote add origin https://github.com/YOUR-USERNAME/TaskbarFetch.git
-git push -u origin main
-```
-
-Replace `YOUR-USERNAME` with your GitHub username.
-
-## Create the first release
-
-The included release workflow runs when a version tag is pushed:
+Before publishing a new version, update `CITATION.cff`, `CHANGELOG.md`, the `AssemblyInformationalVersion` attribute in `src/TaskbarFetch.cs`, and the release status in `README.md`. Then create and push a unique semantic-version tag:
 
 ```bash
-git tag v1.0.0
-git push origin v1.0.0
+git tag v1.0.0-beta.2
+git push origin v1.0.0-beta.2
 ```
 
-GitHub Actions will build the executable on Windows, create a release ZIP, generate SHA-256 checksums, and create the GitHub release automatically.
+The release workflow builds the executable on Windows, creates a ZIP containing the installer and linked documentation, calculates SHA-256 checksums, and publishes a GitHub release. A semantic-version tag with a pre-release suffix, such as `-beta.2` or `-rc.1`, is marked as a pre-release. A stable tag such as `v1.0.0` is published as a normal release.
 
 ## Recommended repository settings
 

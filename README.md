@@ -12,6 +12,8 @@
   <strong>Created and maintained by Thyann Seng</strong>
 </p>
 
+> **Current version: v1.0.0-beta.1 (pre-release).** Please use the [multi-monitor test checklist](docs/TESTING.md) to validate your setup.
+
 TaskbarFetch is a lightweight Windows 11 tray utility for multi-monitor setups. It makes the Windows taskbar behave in a way many multi-monitor users expect: if an application's window is on one monitor and you click that application's taskbar button on another monitor, TaskbarFetch moves the existing window to the monitor you clicked.
 
 It is intentionally small and local-only. TaskbarFetch uses Windows Forms, Win32 hooks, and Microsoft Active Accessibility. It does not use Electron, run a background service, require a server, send telemetry, or require administrator privileges for normal desktop applications.
